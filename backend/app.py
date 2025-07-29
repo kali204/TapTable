@@ -14,18 +14,7 @@ from dietary_classifier import dietary_classifier
 import os
 app=  Flask(__name__, static_folder="dist", static_url_path="")
 
-@app.route("/")
-def serve_home():
-    return send_from_directory(app.static_folder, "index.html")
-
-# Serve any path (for React Router)
-@app.route("/<path:path>")
-def serve_file(path):
-    file_path = os.path.join(app.static_folder, path)
-    if os.path.exists(file_path):
-        return send_from_directory(app.static_folder, path)
-    else:
-        return send_from_directory(app.static_folder, "index.html")
+    
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:1947@localhost/restaurant'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
