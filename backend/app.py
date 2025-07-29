@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,8 +11,18 @@ import jwt
 import json
 import urllib.parse
 from dietary_classifier import dietary_classifier
+import os
 
-app = Flask(__name__)
+app=  Flask(__name__, static_folder="dist", static_url_path="")
+
+# Serve any path (for React Router)
+@app.route("/<path:path>")
+def serve_file(path):
+    file_path = os.path.join(app.static_folder, path)
+    if os.path.exists(file_path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, "index.html")
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:1947@localhost/restaurant'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -138,7 +148,18 @@ def get_restaurant_settings(restaurant_id):
         'email': settings.email,
         'razorpay_merchant_id': settings.razorpay_merchant_id  # Changed from razorpay_account_id
     }
+@app.route("/")
+def serve_home():
+    return send_from_directory(app.static_folder, "index.html")
 
+# Serve any path (for React Router)
+@app.route("/<path:path>")
+def serve_file(path):
+    file_path = os.path.join(app.static_folder, path)
+    if os.path.exists(file_path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, "index.html")
 
 # --- AUTH ROUTES ---
 @app.route('/api/auth/register', methods=['POST'])
