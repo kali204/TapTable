@@ -12,8 +12,11 @@ import json
 import urllib.parse
 from dietary_classifier import dietary_classifier
 import os
-
 app=  Flask(__name__, static_folder="dist", static_url_path="")
+
+@app.route("/")
+def serve_home():
+    return send_from_directory(app.static_folder, "index.html")
 
 # Serve any path (for React Router)
 @app.route("/<path:path>")
