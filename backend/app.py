@@ -23,7 +23,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app)
 
 razorpay_client = razorpay.Client(auth=("rzp_test_e3clyMYTBwCo5r", "IlcQx8KXIasO6QgGXmKCmopE"))
 
