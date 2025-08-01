@@ -51,7 +51,7 @@ export default function TableManagement() {
       console.error('Failed to add table:', error)
       // Fallback for demo
       const tableId = Date.now().toString()
-      const qrData = `http://localhost:5173/menu/1/table_${newTable.number}`
+      const qrData = `https://taptable.onrender.com/menu/1/table_${newTable.number}`
       const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`
       
       setTables(prev => [...prev, {
