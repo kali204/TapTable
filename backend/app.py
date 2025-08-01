@@ -428,7 +428,7 @@ def delete_table(current_user, id):
     return jsonify({'message': 'Table deleted successfully'})
 
 @app.route("/menu/<int:menu_id>/<string:table_name>", methods=["GET"])
-def get_menu(menu_id, table_name):
+def get_menu_for_table(menu_id, table_name):
     # Extract table number from table_name (e.g., "table_5" → 5)
     if not table_name.startswith("table_"):
         return jsonify({"error": "Invalid table format"}), 400
@@ -438,12 +438,10 @@ def get_menu(menu_id, table_name):
     except (IndexError, ValueError):
         return jsonify({"error": "Invalid table name"}), 400
 
-    # Check if the table exists for the restaurant
     table = Table.query.filter_by(restaurant_id=menu_id, number=table_number).first()
     if not table:
         return jsonify({"error": "Table not found"}), 404
 
-    # Fetch menu items from your DB (assuming you have a MenuItem model)
     menu_items = MenuItem.query.filter_by(restaurant_id=menu_id).all()
 
     return jsonify({
