@@ -223,6 +223,11 @@ class ApiService {
     })
   }
 
+  // ==== Public Menu ====
+async getPublicMenu(restaurantId: number, tableName: string) {
+  return this.request(`/menu/${restaurantId}/${encodeURIComponent(tableName)}`)
+}
+
   // ==== Utility ====
   async healthCheck() {
     return this.request('/api/health')

@@ -428,7 +428,7 @@ def delete_table(current_user, id):
     return jsonify({'message': 'Table deleted successfully'})
 
 @app.route("/menu/<int:menu_id>/<string:table_name>", methods=["GET"])
-def get_menu_for_table(menu_id, table_name):
+def get_public_menu(menu_id, table_name):
     # Extract table number from table_name (e.g., "table_5" → 5)
     if not table_name.startswith("table_"):
         return jsonify({"error": "Invalid table format"}), 400
