@@ -158,7 +158,7 @@ export default function RestaurantSettings() {
                 name="phone"
                 value={settings.phone}
                 onChange={handleChange}
-                className="form-input"
+                className="form-input text-black"
                 maxLength={13}
                 placeholder="Enter 10-13 digit number"
               />
@@ -174,7 +174,7 @@ export default function RestaurantSettings() {
                 name="email"
                 value={settings.email}
                 onChange={handleChange}
-                className="form-input"
+                className="form-input text-black"
                 placeholder="restaurant@example.com"
               />
             </div>
@@ -203,7 +203,7 @@ export default function RestaurantSettings() {
                     name="upiId"
                     value={settings.upiId}
                     onChange={handleChange}
-                    className="form-input"
+                    className="form-input text-black"
                     placeholder="restaurant@upi"
                   />
                 </div>
@@ -225,7 +225,7 @@ export default function RestaurantSettings() {
                     name="razorpayMerchantId"
                     value={settings.razorpayMerchantId}
                     onChange={handleChange}
-                    className="form-input"
+                    className="form-input text-black"
                     placeholder="merchant_xxxxxxxxxxxxx"
                   />
                 </div>
