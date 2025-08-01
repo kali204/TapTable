@@ -361,7 +361,7 @@ def update_dietary_info(current_user, item_id):
 
 # --- TABLE MANAGEMENT ---
 def generate_qr_code(restaurant_id, table_number):
-    base_url = "http://localhost:5173/menu"
+    base_url = "https://taptable.onrender.com/menu"
     return f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={base_url}/{restaurant_id}/table_{table_number}"
 
 @app.route('/api/tables', methods=['GET'])
@@ -393,7 +393,7 @@ def add_table(current_user):
     if existing:
         return jsonify({'error': 'Table number already exists'}), 400
 
-    qr_data = f"http://localhost:5173/menu/{current_user.id}/table_{number}"
+    qr_data = f"https://taptable.onrender.com/menu/{current_user.id}/table_{number}"
     qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={qr_data}"
 
     table = Table(
