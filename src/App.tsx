@@ -5,10 +5,11 @@ import AdminDashboard from './pages/AdminDashboard'
 import CustomerMenu from './customer/CustomerMenu.tsx'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProctectedRoute' 
-
+import ScrollToTop from './components/ScrolltoTop.tsx'
 function App() {
   return (
     <AuthProvider>
+      <ScrollToTop/>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/admin/login" element={<AdminLogin />} />
