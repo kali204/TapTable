@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5000/api'
+const API_BASE = 'https://taptable.onrender.com'
 
 type PlainObject = { [key: string]: any }
 
