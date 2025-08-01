@@ -151,6 +151,9 @@ def get_restaurant_settings(restaurant_id):
 def serve_home():
     return send_from_directory(app.static_folder, "index.html")
 
+@app.route("/menu/<int:menu_id>/<string:table_name>")
+def customer_menu(menu_id, table_name):
+    return send_from_directory(app.static_folder, "index.html")
 # Serve any path (for React Router)
 @app.route("/<path:path>")
 def serve_file(path):
