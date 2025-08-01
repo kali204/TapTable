@@ -56,23 +56,21 @@ class ApiService {
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           this.clearToken()
-          // Only redirect if we're in the admin area
           if (window.location.pathname.startsWith('/admin')) {
             window.location.replace("/admin/login")
           }
         }
-        
-        // Enhanced error messages based on status codes
+
         const errorMessages = {
           400: 'Bad Request - Please check your input',
           404: 'Resource not found',
           500: 'Server error - Please try again later',
         }
-        
+
         const errorMessage = data?.error || 
-                            errorMessages[response.status as keyof typeof errorMessages] || 
-                            `HTTP ${response.status}: Request failed`
-        
+                             errorMessages[response.status as keyof typeof errorMessages] || 
+                             `HTTP ${response.status}: Request failed`
+
         throw new Error(errorMessage)
       }
 
@@ -99,7 +97,7 @@ class ApiService {
 
   // ==== Auth ====
   async login(email: string, password: string) {
-    const data = await this.request('/auth/login', {
+    const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
@@ -108,7 +106,7 @@ class ApiService {
   }
 
   async register(name: string, email: string, password: string) {
-    const data = await this.request('/auth/register', {
+    const data = await this.request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
     })
@@ -118,7 +116,7 @@ class ApiService {
 
   // ==== Customer Profile ====
   async upgradeProfile(profileData: { name: string; email: string; phone: string }) {
-    return this.request('/profile/upgrade', {
+    return this.request('/api/profile/upgrade', {
       method: 'POST',
       body: JSON.stringify(profileData),
     })
@@ -126,49 +124,49 @@ class ApiService {
 
   // ==== Menu ====
   async getMenu(restaurantId: number) {
-    return this.request(`/menu/${restaurantId}`)
+    return this.request(`/api/menu/${restaurantId}`)
   }
-  
+
   async addMenuItem(item: any) {
-    return this.request('/menu', {
+    return this.request('/api/menu', {
       method: 'POST',
       body: JSON.stringify(item),
     })
   }
-  
+
   async updateMenuItem(itemId: number, item: any) {
-    return this.request(`/menu/${itemId}`, {
+    return this.request(`/api/menu/${itemId}`, {
       method: 'PUT',
       body: JSON.stringify(item),
     })
   }
-  
+
   async deleteMenuItem(itemId: number) {
-    return this.request(`/menu/${itemId}`, {
+    return this.request(`/api/menu/${itemId}`, {
       method: 'DELETE',
     })
   }
 
   async reclassifyMenu(restaurantId: number) {
-    return this.request(`/menu/reclassify/${restaurantId}`, {
+    return this.request(`/api/menu/reclassify/${restaurantId}`, {
       method: 'POST',
     })
   }
 
   // ==== Tables ====
   async getTables() {
-    return this.request('/tables')
+    return this.request('/api/tables')
   }
-  
+
   async addTable(table: any) {
-    return this.request('/tables', {
+    return this.request('/api/tables', {
       method: 'POST',
       body: JSON.stringify(table),
     })
   }
-  
+
   async deleteTable(tableId: number) {
-    return this.request(`/tables/${tableId}`, {
+    return this.request(`/api/tables/${tableId}`, {
       method: 'DELETE',
     })
   }
@@ -182,44 +180,44 @@ class ApiService {
     table_number: number;
     items: any[];
   }) {
-    return this.request('/create-order', {
+    return this.request('/api/create-order', {
       method: 'POST',
       body: JSON.stringify(orderData),
     })
   }
 
   async getOrders() {
-    return this.request('/orders')
+    return this.request('/api/orders')
   }
 
   async updateOrderStatus(orderId: number, status: string) {
-    return this.request(`/orders/${orderId}/status`, {
+    return this.request(`/api/orders/${orderId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
     })
   }
 
   async getOrderById(orderId: number) {
-    return this.request(`/orders/${orderId}`)
+    return this.request(`/api/orders/${orderId}`)
   }
 
   // ==== Analytics ====
   async getAnalytics(restaurantId: number, params?: PlainObject) {
-    const endpoint = `/analytics/${restaurantId}` + buildQuery(params)
+    const endpoint = `/api/analytics/${restaurantId}` + buildQuery(params)
     return this.request(endpoint)
   }
 
   // ==== Restaurant ====
   async getRestaurantInfo(restaurantId: number) {
-    return this.request(`/restaurants/${restaurantId}`)
+    return this.request(`/api/restaurants/${restaurantId}`)
   }
-  
+
   async getRestaurantSettings() {
-    return this.request('/settings', { method: 'GET' })
+    return this.request('/api/settings', { method: 'GET' })
   }
-  
+
   async updateRestaurantSettings(settings: any) {
-    return this.request('/settings', {
+    return this.request('/api/settings', {
       method: 'POST',
       body: JSON.stringify(settings),
     })
@@ -227,18 +225,17 @@ class ApiService {
 
   // ==== Utility ====
   async healthCheck() {
-    return this.request('/health')
+    return this.request('/api/health')
   }
 
   async uploadImage(file: File, type: 'menu' | 'restaurant' = 'menu') {
     const formData = new FormData()
     formData.append('image', file)
     formData.append('type', type)
-    
-    // Remove Content-Type header for FormData
+
     const headers = { ...this.token && { Authorization: `Bearer ${this.token}` } }
-    
-    return this.request('/upload', {
+
+    return this.request('/api/upload', {
       method: 'POST',
       headers,
       body: formData,

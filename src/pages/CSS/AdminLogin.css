@@ -375,7 +375,7 @@ animation-delay: 8s;
  gap: 0.5rem;
 }
 .input-label {
- color: rgba(255, 255, 255, 0.9);
+ color: rgba(236, 219, 219, 0.9);
  font-weight: 600;
  font-size: 0.875rem;
  letter-spacing: 0.025em;
@@ -399,38 +399,37 @@ animation-delay: 8s;
    REVISED -- FORM INPUT (VISIBLE WHITE TEXT, DARK BACKGROUND)
    =========================== */
 .form-input {
- width: 100%;
- padding: 1rem 1rem 1rem 3rem;
- background: rgba(30, 41, 59, 0.85); /* DARK, for contrast */
- border: 1px solid rgba(255, 255, 255, 0.1);
- border-radius: 12px;
- color: #fff; /* WHITE text! */
- font-size: 1rem;
- transition: all 0.3s ease;
- backdrop-filter: blur(10px);
- position: relative;
- z-index: 1;
+  width: 100%;
+  padding: 1rem 1rem 1rem 3rem;
+  background: rgba(170, 193, 229, 0.85); /* DARK, for contrast */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #fff; /* WHITE text for visibility */
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 1;
 }
 
-/* Input Placeholder - More Visible (BRIGHT) */
 .form-input::placeholder {
- color: rgba(255, 255, 255, 0.55); /* Brighter for better readability */
+  color: rgba(255, 255, 255, 0.65); /* Bright placeholder for readability */
 }
-
 /* Input Focus Styles */
 .form-input:focus {
- outline: none;
- background: rgba(255, 255, 255, 0.08);
- border-color: #667eea;
- box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  outline: none;
+  background: rgba(247, 244, 244, 0.10); /* Optional: slightly lighter, keep it very subtle */
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
 }
 .form-input:focus + .password-toggle,
 .form-input:focus ~ .input-border {
- border-color: #667eea;
+  border-color: #667eea;
 }
 .form-input:focus ~ .input-icon {
- color: #667eea;
+  color: #667eea;
 }
+
 
 /* Password Toggle and Other Input Widgets */
 .password-toggle {
@@ -700,8 +699,8 @@ animation-delay: 8s;
  .login-container { align-items: flex-start; padding-top: 1rem; }
  .login-card { margin: 1rem 0; max-height: calc(100vh - 2rem); }
  .forms-container { min-height: 300px; }
- .auth-form       { gap: 1rem; }
- .form-wrapper    { min-height: 300px; }
+ .auth-form  { gap: 1rem; }
+ .form-wrapper  { min-height: 300px; }
 }
 
 /* ===========================
