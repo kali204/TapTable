@@ -751,4 +751,4 @@ if __name__ == '__main__':
             demo = Restaurant(name='Demo Restaurant', email='demo@restaurant.com', password_hash=generate_password_hash('demo123'))
             db.session.add(demo)
             db.session.commit()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=int(os.environ.get("PORT", 10000)))
