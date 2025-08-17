@@ -33,19 +33,25 @@ razorpay_client = razorpay.Client(auth=("rzp_test_e3clyMYTBwCo5r", "IlcQx8KXIasO
 
 # --- MODELS ---
 class Restaurant(db.Model):
+    __tablename__ = "restaurants"
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    menu_items = db.relationship('MenuItem', backref='restaurant', lazy=True)
-    tables = db.relationship('Table', backref='restaurant', lazy=True)
-    orders = db.relationship('Order', backref='restaurant', lazy=True)
-    reviews = db.relationship('Review', backref='restaurant', lazy=True)
+
+    menu_items = db.relationship("MenuItem", backref="restaurant", lazy=True)
+    tables = db.relationship("Table", backref="restaurant", lazy=True)
+    orders = db.relationship("Order", backref="restaurant", lazy=True)
+    reviews = db.relationship("Review", backref="restaurant", lazy=True)
+
 
 class MenuItem(db.Model):
+    __tablename__ = "menu_items"
+
     id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurants.id"), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float, nullable=False)
@@ -59,46 +65,69 @@ class MenuItem(db.Model):
     is_gluten_free = db.Column(db.Boolean, default=False)
     is_nut_free = db.Column(db.Boolean, default=False)
 
+
 class Table(db.Model):
+    __tablename__ = "tables"
+
     id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurants.id"), nullable=False)
     number = db.Column(db.Integer, nullable=False)
     seats = db.Column(db.Integer, nullable=False)
     qr_code = db.Column(db.String(255))
 
+    orders = db.relationship("Order", backref="table", lazy=True)
+
+
 class Order(db.Model):
+    __tablename__ = "orders"
+
     id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, nullable=False)
-    table_id = db.Column(db.Integer, nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurants.id"), nullable=False)
+    table_id = db.Column(db.Integer, db.ForeignKey("tables.id"), nullable=False)
+
     customer_name = db.Column(db.String(100))
     customer_phone = db.Column(db.String(15))
-    items = db.Column(db.Text)
+
+    # items = db.Column(db.Text)  # legacy; recommend migration away
     total = db.Column(db.Float)
-    status = db.Column(db.String(20), default='pending')
-    payment_method = db.Column(db.String(20))  # <-- NEW
+    status = db.Column(db.String(20), default="pending")
+    payment_method = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    order_items = db.relationship("OrderItem", backref="order", lazy=True)
+    reviews = db.relationship("Review", backref="order", lazy=True)
+
+
 class OrderItem(db.Model):
+    __tablename__ = "order_items"
+
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_item.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)   # Save name at ordering time in case name changes later
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), nullable=False)
+
+    name = db.Column(db.String(100), nullable=False)   # snapshot at ordering time
     price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-    menu_item = db.relationship('MenuItem', backref='order_items', lazy=True)
 
 
 class Review(db.Model):
+    __tablename__ = "reviews"
+
     id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurants.id"), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+
     rating = db.Column(db.Float, nullable=False)
     comment = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+
 class RestaurantSettings(db.Model):
+    __tablename__ = "restaurant_settings"
+
     id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False, unique=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurants.id"), nullable=False, unique=True)
+
     upi_id = db.Column(db.String(100))
     bank_account_name = db.Column(db.String(100))
     bank_account_number = db.Column(db.String(100))
@@ -107,6 +136,7 @@ class RestaurantSettings(db.Model):
     phone = db.Column(db.String(50))
     email = db.Column(db.String(100))
     razorpay_merchant_id = db.Column(db.String(100))  # Changed from razorpay_account_id
+
 
 
 # --- HELPERS ---
