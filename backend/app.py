@@ -68,15 +68,15 @@ class Table(db.Model):
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
-    table_id = db.Column(db.Integer, db.ForeignKey('table.id'), nullable=False)
-    customer_name = db.Column(db.String(100), nullable=False)
-    customer_phone = db.Column(db.String(20), nullable=False)
-    items = db.Column(db.Text, nullable=False)
-    total = db.Column(db.Float, nullable=False)
+    restaurant_id = db.Column(db.Integer, nullable=False)
+    table_id = db.Column(db.Integer, nullable=False)
+    customer_name = db.Column(db.String(100))
+    customer_phone = db.Column(db.String(15))
+    items = db.Column(db.Text)
+    total = db.Column(db.Float)
     status = db.Column(db.String(20), default='pending')
+    payment_method = db.Column(db.String(20))  # <-- NEW
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    order_items = db.relationship('OrderItem', backref='order', lazy=True)
 
 class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -516,7 +516,6 @@ def update_settings(current_user):
     db.session.commit()
     return jsonify({'message': 'Settings updated successfully'})
 
-
 # --- ORDERS ---
 @app.route('/api/orders', methods=['GET'])
 @auth_required
@@ -550,6 +549,7 @@ def get_orders(current_user):
                 'items': order_items,
                 'total': order.total,
                 'status': order.status,
+                'paymentMethod': order.payment_method,   # ✅ Added payment method
                 'timestamp': created_at_ist.isoformat()
             })
         return jsonify(orders_data)
@@ -574,15 +574,17 @@ def update_order_status(current_user, order_id):
     db.session.commit()
     return jsonify({'success': True})
 
-## --- CREATE ORDER AND PAYMENT ---
+
+# --- CREATE ORDER AND PAYMENT ---
 @app.route('/api/create-order', methods=['POST'])
 def create_order_with_payment():
     data = request.json
     amount = data['amount']
     restaurant_id = data['restaurant_id']
     table_number = data.get('table_number')
+    requested_payment_mode = data.get('payment_method')  # (upi/razorpay/cash)
 
-    # Find the table by number
+    # Find the table
     table = Table.query.filter_by(restaurant_id=restaurant_id, number=table_number).first()
     if not table:
         return jsonify({"error": "Invalid table number"}), 400
@@ -595,23 +597,26 @@ def create_order_with_payment():
     razorpay_order_id = None
     upi_qr = None
 
-    # RAZORPAY PAYMENT (without transfers)
-    if razorpay_merchant_id:
+    # --- CASH ---
+    if requested_payment_mode == "cash":
+        payment_mode = "cash"
+
+    # --- RAZORPAY ---
+    elif requested_payment_mode == "razorpay" and razorpay_merchant_id:
         payment_mode = "razorpay"
         try:
             razorpay_order = razorpay_client.order.create({
                 "amount": int(amount * 100),
                 "currency": "INR",
                 "receipt": f"receipt_{restaurant_id}_table_{table_number}",
-                # Remove transfers section completely
             })
             razorpay_order_id = razorpay_order["id"]
         except Exception as e:
             print("⚠️ Razorpay error:", e)
             return jsonify({"error": f"Failed to create Razorpay order: {str(e)}"}), 500
 
-    # UPI PAYMENT
-    elif upi_id:
+    # --- UPI ---
+    elif requested_payment_mode == "upi" and upi_id:
         payment_mode = "upi"
         upi_params = {
             "pa": upi_id,
@@ -621,10 +626,11 @@ def create_order_with_payment():
         }
         upi_str = "upi://pay?" + urllib.parse.urlencode(upi_params)
         upi_qr = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(upi_str)}"
-    else:
-        return jsonify({"error": "No payment method configured for this restaurant"}), 400
 
-    # CREATE ORDER
+    else:
+        return jsonify({"error": "Invalid or unsupported payment method"}), 400
+
+    # --- CREATE ORDER ---
     order = Order(
         restaurant_id=restaurant_id,
         table_id=table.id,
@@ -632,7 +638,8 @@ def create_order_with_payment():
         customer_phone=data['customerPhone'],
         items=json.dumps(data['items']),
         total=amount,
-        status='pending'
+        status='pending',
+        payment_method=payment_mode   # ✅ Save payment method
     )
     db.session.add(order)
     db.session.commit()
@@ -645,6 +652,7 @@ def create_order_with_payment():
         "order_id": razorpay_order_id
     }
     return jsonify(rv)
+
 
 
 

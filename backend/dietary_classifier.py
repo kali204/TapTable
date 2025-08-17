@@ -11,7 +11,7 @@ class DietaryClassifier:
             'turkey', 'duck', 'goat', 'egg', 'eggs', 'keema', 'tikka', 'tandoori chicken',
             'butter chicken', 'chicken curry', 'fish curry', 'mutton curry',
             'biryani chicken', 'chicken biryani', 'mutton biryani', 'fish fry',
-            'chicken fry', 'mutton fry', 'egg curry', 'omelette', 'scrambled egg'
+            'chicken fry', 'mutton fry', 'egg curry', 'omelette', 'scrambled egg','pepperoni'
         }
         
         # Vegan-friendly keywords
