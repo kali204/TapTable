@@ -9,7 +9,7 @@ import razorpay
 def create_app():
     app = Flask(__name__, static_folder="dist", static_url_path="")
     app.config.from_object(Config)
-    CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
+    CORS(app, supports_credentials=True, origins="*")
     db.init_app(app)
     migrate.init_app(app, db)
 
@@ -28,6 +28,9 @@ def create_app():
     from routes.review import review_bp
     from routes.analytics import analytics_bp
     from routes.payment import payment_bp
+    from routes.settings import settings_bp
+    from routes.restaurant import restaurant_bp
+
 
     app.register_blueprint(payment_bp)
     app.register_blueprint(auth_bp)
@@ -36,6 +39,8 @@ def create_app():
     app.register_blueprint(order_bp)
     app.register_blueprint(review_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(restaurant_bp)
+    app.register_blueprint(settings_bp)
 
     # Serve SPA static files and index.html
     @app.route("/")

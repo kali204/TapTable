@@ -4,10 +4,7 @@ from models import MenuItem
 from functools import wraps
 import jwt
 
-
 menu_bp = Blueprint('menu', __name__, url_prefix='/api/menu')
-
-
 
 def auth_required(f):
     @wraps(f)
@@ -18,14 +15,13 @@ def auth_required(f):
         try:
             token = token.split(' ')[1] if ' ' in token else token
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-            user_id = data.get('restaurant_id')
-            if not user_id:
+            restaurant_id = data.get('restaurant_id')
+            if not restaurant_id:
                 return jsonify({'error': 'Invalid token'}), 401
         except Exception:
             return jsonify({'error': 'Invalid token'}), 401
-        return f(user_id, *args, **kwargs)
+        return f(restaurant_id, *args, **kwargs)
     return decorated
-
 
 @menu_bp.route('/', methods=['POST'])
 @auth_required
@@ -48,21 +44,28 @@ def add_menu_item(restaurant_id):
     db.session.commit()
     return jsonify({'message': 'Menu item added', 'id': item.id}), 201
 
-
-# Public route to get menu for any restaurant by ID (no auth)
+# Public route: no auth required to get menu items by restaurant
 @menu_bp.route('/<int:restaurant_id>', methods=['GET'])
 def get_menu(restaurant_id):
-    items = MenuItem.query.filter_by(restaurant_id=restaurant_id).all()
-    return jsonify([{
-        'id': i.id,
-        'name': i.name,
-        'description': i.description,
-        'price': i.price,
-        'category': i.category,
-        'image_url': i.image_url,
-        'available': i.available
-    } for i in items]), 200
-
+    menu_items = MenuItem.query.filter_by(restaurant_id=restaurant_id).all()
+    return jsonify([
+        {
+            "id": item.id,
+            "name": item.name,
+            "description": item.description or "",
+            "price": item.price,
+            "category": item.category,
+            "image_url": item.image_url or "",
+            "available": item.available,
+            "dietaryInfo": {
+                "isVegetarian": bool(item.is_vegetarian),
+                "isVegan": bool(item.is_vegan),
+                "isGlutenFree": bool(item.is_gluten_free),
+                "isNutFree": bool(item.is_nut_free),
+            }
+        }
+        for item in menu_items
+    ])
 
 @menu_bp.route('/<int:item_id>', methods=['PUT'])
 @auth_required
@@ -76,7 +79,6 @@ def update_menu_item(restaurant_id, item_id):
             setattr(item, field, data[field])
     db.session.commit()
     return jsonify({'message': 'Menu item updated'}), 200
-
 
 @menu_bp.route('/<int:item_id>', methods=['DELETE'])
 @auth_required
