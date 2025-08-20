@@ -1,98 +1,100 @@
-const API_BASE = 'https://taptable.onrender.com'
+// utils/api.ts
+const API_BASE = 'https://taptable.onrender.com';
 
-type PlainObject = { [key: string]: any }
+type PlainObject = { [key: string]: any };
 
 function buildQuery(params?: PlainObject) {
-  if (!params) return ""
+  if (!params) return '';
   const str = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null)
-    .map(([k, v]) => 
-      encodeURIComponent(k) + "=" + encodeURIComponent(Array.isArray(v) ? v.join(",") : v)
+    .map(([k, v]) =>
+      encodeURIComponent(k) + '=' + encodeURIComponent(Array.isArray(v) ? v.join(',') : v)
     )
-    .join("&")
-  return str ? "?" + str : ""
+    .join('&');
+  return str ? '?' + str : '';
 }
 
+type FetchJson = unknown | null;
+
 class ApiService {
-  private token: string | null = localStorage.getItem('token')
-  private debugMode: boolean = process.env.NODE_ENV === 'development'
+  private token: string | null = localStorage.getItem('token');
+  private debugMode: boolean = import.meta?.env?.MODE === 'development' || process.env.NODE_ENV === 'development';
 
   private log(...args: any[]) {
-    if (this.debugMode) {
-      console.log('[API]', ...args)
-    }
+    if (this.debugMode) console.log('[API]', ...args);
   }
 
   private syncToken() {
-    this.token = localStorage.getItem("token")
+    this.token = localStorage.getItem('token');
   }
 
-  private async request(endpoint: string, options: RequestInit = {}) {
-    this.syncToken()
+  private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
+    this.syncToken();
 
-    const url = `${API_BASE}${endpoint}`
+    const url = `${API_BASE}${endpoint}`;
+    const hasFormData = options.body instanceof FormData;
+
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-        ...options.headers,
+        ...(hasFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+        ...(options.headers || {}),
       },
+      credentials: 'include',
       ...options,
-    }
+    };
 
     if (this.debugMode) {
-      this.log(`${options.method || 'GET'} ${endpoint}`, options.body ? JSON.parse(options.body as string) : '')
+      this.log(`${options.method || 'GET'} ${endpoint}`, options.body && !hasFormData ? JSON.parse(options.body as string) : hasFormData ? '[FormData]' : '');
     }
 
     try {
-      const response = await fetch(url, config)
-      let data
+      const response = await fetch(url, config);
+      let data: FetchJson;
       try {
-        data = await response.json()
+        data = await response.json();
       } catch {
-        data = null
+        data = null;
       }
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-          this.clearToken()
+          this.clearToken();
           if (window.location.pathname.startsWith('/admin')) {
-            window.location.replace("/admin/login")
+            window.location.replace('/admin/login');
           }
         }
 
-        const errorMessages = {
+        const errorMessages: Record<number, string> = {
           400: 'Bad Request - Please check your input',
           404: 'Resource not found',
           500: 'Server error - Please try again later',
-        }
+        };
 
-        const errorMessage = data?.error || 
-                             errorMessages[response.status as keyof typeof errorMessages] || 
-                             `HTTP ${response.status}: Request failed`
+        const errorMessage =
+          (data as any)?.error ||
+          errorMessages[response.status] ||
+          `HTTP ${response.status}: Request failed`;
 
-        throw new Error(errorMessage)
+        throw new Error(errorMessage);
       }
 
-      if (this.debugMode) {
-        this.log(`Response from ${endpoint}:`, data)
-      }
-
-      return data
+      if (this.debugMode) this.log(`Response from ${endpoint}:`, data);
+      return data;
     } catch (error) {
-      console.error(`API Error [${endpoint}]:`, error)
-      throw error
+      console.error(`API Error [${endpoint}]:`, error);
+      throw error;
     }
   }
 
   setToken(token: string) {
-    this.token = token
-    localStorage.setItem('token', token)
+    this.token = token;
+    localStorage.setItem('token', token);
   }
 
   clearToken() {
-    this.token = null
-    localStorage.removeItem('token')
+    this.token = null;
+    localStorage.removeItem('token');
   }
 
   // ==== Auth ====
@@ -100,18 +102,18 @@ class ApiService {
     const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
-    })
-    this.setToken(data.token)
-    return data
+    });
+    if (data?.token) this.setToken(data.token);
+    return data;
   }
 
   async register(name: string, email: string, password: string) {
     const data = await this.request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
-    })
-    this.setToken(data.token)
-    return data
+    });
+    if (data?.token) this.setToken(data.token);
+    return data;
   }
 
   // ==== Customer Profile ====
@@ -119,77 +121,105 @@ class ApiService {
     return this.request('/api/profile/upgrade', {
       method: 'POST',
       body: JSON.stringify(profileData),
-    })
+    });
   }
 
-  // ==== Menu ====
+  // ==== Menu (Admin/Owner) ====
   async getMenu(restaurantId: number) {
-    return this.request(`/api/menu/${restaurantId}`)
+    return this.request(`/api/menu/${restaurantId}`);
   }
 
   async addMenuItem(item: any) {
-    return this.request('/api/menu', {
+    return this.request('/api/menu/', {
       method: 'POST',
       body: JSON.stringify(item),
-    })
+    });
   }
 
   async updateMenuItem(itemId: number, item: any) {
     return this.request(`/api/menu/${itemId}`, {
       method: 'PUT',
       body: JSON.stringify(item),
-    })
+    });
   }
 
   async deleteMenuItem(itemId: number) {
     return this.request(`/api/menu/${itemId}`, {
       method: 'DELETE',
-    })
+    });
   }
 
   async reclassifyMenu(restaurantId: number) {
     return this.request(`/api/menu/reclassify/${restaurantId}`, {
       method: 'POST',
-    })
+    });
   }
 
   // ==== Tables ====
   async getTables() {
-    return this.request('/api/tables')
+    return this.request('/api/tables/');
   }
 
   async addTable(table: any) {
-    return this.request('/api/tables', {
+    return this.request('/api/tables/', {
       method: 'POST',
       body: JSON.stringify(table),
-    })
+    });
   }
 
   async deleteTable(tableId: number) {
     return this.request(`/api/tables/${tableId}`, {
       method: 'DELETE',
-    })
+    });
   }
 
-  // ==== Orders ====
-  async createOrder(orderData: {
-    customerName: string;
-    customerPhone: string;
-    amount: number;
-    restaurant_id: number;
-    table_number: number;
-    items: any[];
-  }) {
-    return this.request('/api/create-order', {
-      method: 'POST',
-      body: JSON.stringify(orderData),
-    })
+  // Restaurant tables for public flow
+  async getTablesForRestaurant(restaurantId: number) {
+    return this.request(`/api/restaurants/${restaurantId}/tables`);
   }
+
+  // ==== Orders (Public) ====
+  async createOrder(orderData: {
+  customerName: string;
+  customerPhone: string;
+  amount: number;
+  restaurant_id: number;
+  table_number: number; // human-readable number, e.g., 1
+  items: Array<{ id: number; name: string; price: number; quantity: number }>;
+  payment_method: "razorpay" | "cash" | "upi";  // Add this as needed
+}) {
+  // Find actual table info by table_number
+  const tables = await this.getTablesForRestaurant(orderData.restaurant_id);
+  const selectedTable = (tables || []).find(
+    (t: any) => String(t.number) === String(orderData.table_number)
+  );
+
+  if (!selectedTable) {
+    throw new Error(
+      `Table number ${orderData.table_number} not found for restaurant ${orderData.restaurant_id}`
+    );
+  }
+
+  // Construct payload matching backend keys and types strictly
+  const payload = {
+    customerName: orderData.customerName,
+    customerPhone: orderData.customerPhone,
+    amount: orderData.amount,               // backend expects 'amount'
+    restaurant_id: orderData.restaurant_id, // snake_case
+    table_number: orderData.table_number,  // human-readable table number
+    payment_method: orderData.payment_method, // add payment method
+    items: orderData.items,                 // array, NOT stringified
+  };
+
+  return this.request('/api/customer-order/create-order', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
 
   async getOrders() {
-    return this.request('/api/orders')
+    return this.request('/api/orders/')
   }
-
   async updateOrderStatus(orderId: number, status: string) {
     return this.request(`/api/orders/${orderId}/status`, {
       method: 'PUT',
@@ -203,49 +233,51 @@ class ApiService {
 
   // ==== Analytics ====
   async getAnalytics(restaurantId: number, params?: PlainObject) {
-    const endpoint = `/api/analytics/${restaurantId}` + buildQuery(params)
-    return this.request(endpoint)
+    const endpoint = `/api/analytics/${restaurantId}` + buildQuery(params);
+    return this.request(endpoint);
   }
 
-  // ==== Restaurant ====
+  // ==== Restaurant (Public + Admin) ====
   async getRestaurantInfo(restaurantId: number) {
-    return this.request(`/api/restaurants/${restaurantId}`)
+    return this.request(`/api/restaurants/${restaurantId}`);
   }
 
   async getRestaurantSettings() {
-    return this.request('/api/settings', { method: 'GET' })
+    return this.request('/api/settings', { method: 'GET' });
   }
 
   async updateRestaurantSettings(settings: any) {
     return this.request('/api/settings', {
       method: 'POST',
       body: JSON.stringify(settings),
-    })
+    });
   }
 
   // ==== Public Menu ====
-async getPublicMenu(restaurantId: number, tableName: string) {
-  return this.request(`/menu/${restaurantId}/${encodeURIComponent(tableName)}`)
-}
+  async getPublicMenu(restaurantId: number, tableName: string) {
+    return this.request(`/menu/${restaurantId}/${encodeURIComponent(tableName)}`);
+  }
 
   // ==== Utility ====
   async healthCheck() {
-    return this.request('/api/health')
+    return this.request('/api/health');
   }
 
   async uploadImage(file: File, type: 'menu' | 'restaurant' = 'menu') {
-    const formData = new FormData()
-    formData.append('image', file)
-    formData.append('type', type)
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('type', type);
 
-    const headers = { ...this.token && { Authorization: `Bearer ${this.token}` } }
+    const headers: Record<string, string> = {};
+    if (this.token) headers.Authorization = `Bearer ${this.token}`;
 
     return this.request('/api/upload', {
       method: 'POST',
       headers,
       body: formData,
-    })
+    });
   }
 }
 
-export const apiService = new ApiService()
+export const apiService = new ApiService();
+

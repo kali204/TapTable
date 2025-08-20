@@ -17,3 +17,15 @@ __pycache__/
 # General
 *.bak
 *.tmp
+# Python virtual environment
+backend/venv/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+
+# Database files (optional)
+*.sqlite3
+
+# Environment files (optional, for secrets)
+.env

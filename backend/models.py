@@ -22,6 +22,11 @@ class MenuItem(db.Model):
     category = db.Column(db.String(50))
     image_url = db.Column(db.String(255))
     available = db.Column(db.Boolean, default=True)
+    is_vegetarian = db.Column(db.Boolean, default=False, nullable=False)
+    is_vegan = db.Column(db.Boolean, default=False, nullable=False)
+    is_gluten_free = db.Column(db.Boolean, default=False, nullable=False)
+    is_nut_free = db.Column(db.Boolean, default=False, nullable=False)
+
     # Future: dietary flags can be added here
 
 class Table(db.Model):
@@ -59,4 +64,17 @@ class Analytics(db.Model):
 
     __table_args__ = (db.UniqueConstraint('restaurant_id', 'date', name='unique_restaurant_date'),)  # Ensure unique daily records per restaurant   
 
-    
+class RestaurantSettings(db.Model):
+    __tablename__ = "restaurant_settings"
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurant.id"), nullable=False, unique=True)
+
+
+    upi_id = db.Column(db.String(100))
+    bank_account_name = db.Column(db.String(100))
+    bank_account_number = db.Column(db.String(100))
+    ifsc_code = db.Column(db.String(50))
+    description = db.Column(db.Text)
+    phone = db.Column(db.String(50))
+    email = db.Column(db.String(100))
+    razorpay_merchant_id = db.Column(db.String(100))

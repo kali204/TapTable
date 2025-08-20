@@ -1,10 +1,12 @@
-# app.py
 import os
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from extensions import db, migrate
 from config import Config
+
+
 import razorpay
+from models import Table
 
 def create_app():
     app = Flask(__name__, static_folder="dist", static_url_path="")
@@ -30,6 +32,11 @@ def create_app():
     from routes.payment import payment_bp
     from routes.settings import settings_bp
     from routes.restaurant import restaurant_bp
+    from routes.customer_menu import customer_menu_bp
+    from routes.customer_order import customer_order_bp
+    app.register_blueprint(customer_order_bp)
+
+    app.register_blueprint(customer_menu_bp)
 
 
     app.register_blueprint(payment_bp)
@@ -54,7 +61,25 @@ def create_app():
             return send_from_directory(app.static_folder, path)
         return send_from_directory(app.static_folder, "index.html")
 
+    # Route to support deep linking for customer menu SPA
+    @app.route('/menu/<int:restaurant_id>/table_<table_number>')
+    def customer_menu(restaurant_id, table_number):
+        # Serves the SPA index.html so React router can handle this route
+        return app.send_static_file('index.html')
+    @app.route('/api/restaurants/<int:restaurant_id>/tables')
+    def get_tables_restaurant(restaurant_id):
+        tables = Table.query.filter_by(restaurant_id=restaurant_id).all()
+        return jsonify([{
+            'id': t.id,
+            'number': t.number,
+            'seats': t.seats,
+            'qr_code': t.qr_code
+        } for t in tables]), 200
+    
+    
+
     return app
+
 
 app = create_app()
 

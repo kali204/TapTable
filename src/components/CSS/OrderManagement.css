@@ -762,3 +762,49 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Payment badge styles */
+.payment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+}
+
+.payment-badge .pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.payment-badge .pill.paid {
+  background: #e8f5e9;
+  border-color: #c8e6c9;
+  color: #1b5e20;
+}
+
+.payment-badge .pill.unpaid {
+  background: #fff3e0;
+  border-color: #ffe0b2;
+  color: #e65100;
+}
+
+/* Color accents per method */
+.payment-badge.cash    { box-shadow: 0 0 0 2px rgba(255, 193, 7, .15) inset; }
+.payment-badge.upi     { box-shadow: 0 0 0 2px rgba(33, 150, 243, .12) inset; }
+.payment-badge.razorpay{ box-shadow: 0 0 0 2px rgba(76, 175, 80, .12) inset; }
+.payment-badge.unknown { box-shadow: 0 0 0 2px rgba(158, 158, 158, .12) inset; }
+
+.order-payment-row {
+  margin: 12px 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

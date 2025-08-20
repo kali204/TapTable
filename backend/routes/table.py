@@ -5,7 +5,7 @@ from functools import wraps
 import jwt
 import urllib.parse
 
-# Plural blueprint for /api/tables endpoints
+# Blueprint for /api/tables endpoints
 table_bp = Blueprint('tables', __name__, url_prefix='/api/tables')
 
 def auth_required(f):
@@ -17,17 +17,16 @@ def auth_required(f):
         try:
             token = token.split(' ')[1] if ' ' in token else token
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-            user_id = data.get('restaurant_id')
-            if not user_id:
+            restaurant_id = data.get('restaurant_id')
+            if not restaurant_id:
                 return jsonify({'error': 'Invalid token'}), 401
         except Exception:
             return jsonify({'error': 'Invalid token'}), 401
-        return f(user_id, *args, **kwargs)
+        return f(restaurant_id, *args, **kwargs)
     return decorated
 
 def generate_qr_code(restaurant_id, table_number):
     base_url = "https://taptable.onrender.com/menu"
-    # Encoding is optional as QR server API can handle most characters, but safer with urllib.parse.quote
     url_to_encode = f"{base_url}/{restaurant_id}/table_{table_number}"
     encoded_data = urllib.parse.quote(url_to_encode)
     return f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={encoded_data}"
@@ -36,7 +35,7 @@ def generate_qr_code(restaurant_id, table_number):
 @auth_required
 def add_table(restaurant_id):
     data = request.get_json() or {}
-    number = str(data.get('number'))  # Always a string for DB compatibility
+    number = str(data.get('number'))  # Store as string for consistency
     seats = data.get('seats', 0)
     if not number:
         return jsonify({'error': 'Table number is required'}), 400
@@ -78,3 +77,12 @@ def delete_table(restaurant_id, table_id):
     db.session.delete(table)
     db.session.commit()
     return jsonify({'message': 'Table deleted'}), 200
+@table_bp.route('/public/<int:restaurant_id>', methods=['GET'])
+def get_tables_public(restaurant_id):
+    tables = Table.query.filter_by(restaurant_id=restaurant_id).all()
+    return jsonify([{
+        'id': t.id,
+        'number': t.number,
+        'seats': t.seats,
+        'qr_code': t.qr_code
+    } for t in tables]), 200
