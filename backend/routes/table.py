@@ -1,3 +1,4 @@
+# routes/table.py
 from flask import Blueprint, request, jsonify, current_app
 from extensions import db
 from models import Table
@@ -5,10 +6,13 @@ from functools import wraps
 import jwt
 import urllib.parse
 
-# Blueprint for /api/tables endpoints
 table_bp = Blueprint('tables', __name__, url_prefix='/api/tables')
 
+
 def auth_required(f):
+    """
+    Decorator to enforce JWT authentication for restaurant endpoints.
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get('Authorization')
@@ -25,18 +29,28 @@ def auth_required(f):
         return f(restaurant_id, *args, **kwargs)
     return decorated
 
+
 def generate_qr_code(restaurant_id, table_number):
+    """
+    Generate a QR code URL for a table pointing to the customer menu.
+    """
     base_url = "https://taptable.onrender.com/menu"
     url_to_encode = f"{base_url}/{restaurant_id}/table_{table_number}"
     encoded_data = urllib.parse.quote(url_to_encode)
     return f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={encoded_data}"
 
+
 @table_bp.route('/', methods=['POST'])
 @auth_required
 def add_table(restaurant_id):
+    """
+    Add a new table for a restaurant.
+    Payload: {"number": str/int, "seats": int}
+    """
     data = request.get_json() or {}
     number = str(data.get('number'))  # Store as string for consistency
     seats = data.get('seats', 0)
+
     if not number:
         return jsonify({'error': 'Table number is required'}), 400
     if Table.query.filter_by(restaurant_id=restaurant_id, number=number).first():
@@ -57,9 +71,13 @@ def add_table(restaurant_id):
         }
     }), 201
 
+
 @table_bp.route('/', methods=['GET'])
 @auth_required
 def get_tables(restaurant_id):
+    """
+    Get all tables for the authenticated restaurant.
+    """
     tables = Table.query.filter_by(restaurant_id=restaurant_id).all()
     return jsonify([{
         'id': t.id,
@@ -68,17 +86,27 @@ def get_tables(restaurant_id):
         'qr_code': t.qr_code
     } for t in tables]), 200
 
+
 @table_bp.route('/<int:table_id>', methods=['DELETE'])
 @auth_required
 def delete_table(restaurant_id, table_id):
+    """
+    Delete a table by its ID for the authenticated restaurant.
+    """
     table = Table.query.filter_by(id=table_id, restaurant_id=restaurant_id).first()
     if not table:
         return jsonify({'error': 'Table not found'}), 404
+
     db.session.delete(table)
     db.session.commit()
     return jsonify({'message': 'Table deleted'}), 200
+
+
 @table_bp.route('/public/<int:restaurant_id>', methods=['GET'])
 def get_tables_public(restaurant_id):
+    """
+    Public endpoint: Get all tables of a restaurant (no auth required).
+    """
     tables = Table.query.filter_by(restaurant_id=restaurant_id).all()
     return jsonify([{
         'id': t.id,

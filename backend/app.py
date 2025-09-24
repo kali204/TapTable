@@ -3,8 +3,6 @@ from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from extensions import db, migrate
 from config import Config
-
-
 import razorpay
 from models import Table
 
@@ -15,14 +13,14 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Setup Razorpay client and attach to app for global access
-    key_id = app.config['RAZORPAY_KEY_ID']
-    key_secret = app.config['RAZORPAY_KEY_SECRET']
+    # Razorpay client setup
+    key_id = app.config.get('RAZORPAY_KEY_ID')
+    key_secret = app.config.get('RAZORPAY_KEY_SECRET')
     app.razorpay_client = None
     if key_id and key_secret:
         app.razorpay_client = razorpay.Client(auth=(key_id, key_secret))
 
-    # Import and register blueprints
+    # Register blueprints
     from routes.auth import auth_bp
     from routes.menu import menu_bp
     from routes.table import table_bp
@@ -34,38 +32,30 @@ def create_app():
     from routes.restaurant import restaurant_bp
     from routes.customer_menu import customer_menu_bp
     from routes.customer_order import customer_order_bp
-    app.register_blueprint(customer_order_bp)
 
-    app.register_blueprint(customer_menu_bp)
+    for bp in [customer_order_bp, customer_menu_bp, payment_bp, auth_bp, menu_bp, table_bp,
+               order_bp, review_bp, analytics_bp, restaurant_bp, settings_bp]:
+        app.register_blueprint(bp)
 
-
-    app.register_blueprint(payment_bp)
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(menu_bp)
-    app.register_blueprint(table_bp)
-    app.register_blueprint(order_bp)
-    app.register_blueprint(review_bp)
-    app.register_blueprint(analytics_bp)
-    app.register_blueprint(restaurant_bp)
-    app.register_blueprint(settings_bp)
-
-    # Serve SPA static files and index.html
-    @app.route("/")
+    # Serve SPA root
+    @app.route('/')
     def index():
         return send_from_directory(app.static_folder, "index.html")
 
-    @app.route("/<path:path>")
-    def static_file(path):
+    # Catch-all for SPA routes (admin, customer pages, etc.)
+    @app.route('/<path:path>')
+    def catch_all(path):
+        # API routes should not be caught
+        if path.startswith('api/'):
+            return jsonify({'error': 'API route not found'}), 404
+
+        # Serve index.html for React Router
         file_path = os.path.join(app.static_folder, path)
         if os.path.exists(file_path):
             return send_from_directory(app.static_folder, path)
         return send_from_directory(app.static_folder, "index.html")
 
-    # Route to support deep linking for customer menu SPA
-    @app.route('/menu/<int:restaurant_id>/table_<table_number>')
-    def customer_menu(restaurant_id, table_number):
-        # Serves the SPA index.html so React router can handle this route
-        return app.send_static_file('index.html')
+    # Example API route
     @app.route('/api/restaurants/<int:restaurant_id>/tables')
     def get_tables_restaurant(restaurant_id):
         tables = Table.query.filter_by(restaurant_id=restaurant_id).all()
@@ -75,8 +65,6 @@ def create_app():
             'seats': t.seats,
             'qr_code': t.qr_code
         } for t in tables]), 200
-    
-    
 
     return app
 

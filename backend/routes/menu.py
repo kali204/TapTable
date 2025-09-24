@@ -1,3 +1,4 @@
+# routes/menu.py
 from flask import Blueprint, request, jsonify, current_app
 from extensions import db
 from models import MenuItem
@@ -6,6 +7,10 @@ import jwt
 
 menu_bp = Blueprint('menu', __name__, url_prefix='/api/menu')
 
+
+# -------------------------
+# Auth decorator
+# -------------------------
 def auth_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -23,28 +28,41 @@ def auth_required(f):
         return f(restaurant_id, *args, **kwargs)
     return decorated
 
+
+# -------------------------
+# Add menu item
+# -------------------------
 @menu_bp.route('/', methods=['POST'])
 @auth_required
 def add_menu_item(restaurant_id):
     data = request.get_json() or {}
     name = data.get('name')
     price = data.get('price')
+
     if not name or price is None:
         return jsonify({'error': 'Name and price are required'}), 400
+
     item = MenuItem(
         restaurant_id=restaurant_id,
         name=name,
         description=data.get('description'),
-        price=price,
+        price=float(price),
         category=data.get('category'),
         image_url=data.get('image_url'),
-        available=data.get('available', True)
+        available=data.get('available', True),
+        is_vegetarian=data.get('is_vegetarian', False),
+        is_vegan=data.get('is_vegan', False),
+        is_gluten_free=data.get('is_gluten_free', False),
+        is_nut_free=data.get('is_nut_free', False),
     )
     db.session.add(item)
     db.session.commit()
     return jsonify({'message': 'Menu item added', 'id': item.id}), 201
 
-# Public route: no auth required to get menu items by restaurant
+
+# -------------------------
+# Get menu items (public)
+# -------------------------
 @menu_bp.route('/<int:restaurant_id>', methods=['GET'])
 def get_menu(restaurant_id):
     menu_items = MenuItem.query.filter_by(restaurant_id=restaurant_id).all()
@@ -53,39 +71,49 @@ def get_menu(restaurant_id):
             "id": item.id,
             "name": item.name,
             "description": item.description or "",
-            "price": item.price,
+            "price": float(item.price),
             "category": item.category,
             "image_url": item.image_url or "",
-            "available": item.available,
+            "available": bool(item.available),
             "dietaryInfo": {
                 "isVegetarian": bool(item.is_vegetarian),
                 "isVegan": bool(item.is_vegan),
                 "isGlutenFree": bool(item.is_gluten_free),
                 "isNutFree": bool(item.is_nut_free),
             }
-        }
-        for item in menu_items
-    ])
+        } for item in menu_items
+    ]), 200
 
+
+# -------------------------
+# Update menu item
+# -------------------------
 @menu_bp.route('/<int:item_id>', methods=['PUT'])
 @auth_required
 def update_menu_item(restaurant_id, item_id):
     item = MenuItem.query.filter_by(id=item_id, restaurant_id=restaurant_id).first()
     if not item:
         return jsonify({'error': 'Menu item not found'}), 404
+
     data = request.get_json() or {}
-    for field in ['name', 'description', 'price', 'category', 'image_url', 'available']:
+    for field in ['name', 'description', 'price', 'category', 'image_url', 'available',
+                  'is_vegetarian', 'is_vegan', 'is_gluten_free', 'is_nut_free']:
         if field in data:
             setattr(item, field, data[field])
     db.session.commit()
     return jsonify({'message': 'Menu item updated'}), 200
 
+
+# -------------------------
+# Delete menu item
+# -------------------------
 @menu_bp.route('/<int:item_id>', methods=['DELETE'])
 @auth_required
 def delete_menu_item(restaurant_id, item_id):
     item = MenuItem.query.filter_by(id=item_id, restaurant_id=restaurant_id).first()
     if not item:
         return jsonify({'error': 'Menu item not found'}), 404
+
     db.session.delete(item)
     db.session.commit()
     return jsonify({'message': 'Menu item deleted'}), 200

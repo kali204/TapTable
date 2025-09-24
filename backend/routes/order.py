@@ -5,11 +5,14 @@ from models import Order, Table
 from functools import wraps
 import jwt
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
 order_bp = Blueprint('order', __name__, url_prefix='/api/orders')
 
 
+# -------------------------
+# Auth decorator
+# -------------------------
 def auth_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -19,33 +22,42 @@ def auth_required(f):
         try:
             token = token.split(' ')[1] if ' ' in token else token
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-            user_id = data.get('restaurant_id')
-            if not user_id:
+            restaurant_id = data.get('restaurant_id')
+            if not restaurant_id:
                 return jsonify({'error': 'Invalid token'}), 401
         except Exception:
             return jsonify({'error': 'Invalid token'}), 401
-        return f(user_id, *args, **kwargs)
+        return f(restaurant_id, *args, **kwargs)
     return decorated
 
+
+# -------------------------
+# Get all orders
+# -------------------------
 @order_bp.route('/', methods=['GET'])
 @auth_required
 def get_orders(restaurant_id):
     orders = Order.query.filter_by(restaurant_id=restaurant_id).all()
-    result = []
-    for o in orders:
-        result.append({
+    result = [
+        {
             'id': o.id,
             'table_id': o.table_id,
             'customer_name': o.customer_name,
             'customer_phone': o.customer_phone,
             'items_json': o.items_json,
-            'total': o.total,
+            'total': float(o.total),
             'status': o.status,
             'payment_method': o.payment_method,
-            'created_at': o.created_at.isoformat()
-        })
+            'created_at': o.created_at.isoformat() if o.created_at else None
+        }
+        for o in orders
+    ]
     return jsonify(result), 200
 
+
+# -------------------------
+# Create a new order
+# -------------------------
 @order_bp.route('/', methods=['POST'])
 @auth_required
 def create_order(restaurant_id):
@@ -60,7 +72,6 @@ def create_order(restaurant_id):
     if not table_number or total is None:
         return jsonify({'error': 'Table number and total are required'}), 400
 
-    # Find table by number and restaurant
     table = Table.query.filter_by(restaurant_id=restaurant_id, number=str(table_number)).first()
     if not table:
         return jsonify({'error': 'Invalid table number'}), 400
@@ -71,7 +82,7 @@ def create_order(restaurant_id):
         customer_name=customer_name,
         customer_phone=customer_phone,
         items_json=json.dumps(items),
-        total=total,
+        total=float(total),
         status='pending',
         payment_method=payment_method,
         created_at=datetime.utcnow()
@@ -82,6 +93,9 @@ def create_order(restaurant_id):
     return jsonify({'message': 'Order created', 'order_id': order.id}), 201
 
 
+# -------------------------
+# Update order status
+# -------------------------
 @order_bp.route('/<int:order_id>/status', methods=['PUT'])
 @auth_required
 def update_order_status(restaurant_id, order_id):

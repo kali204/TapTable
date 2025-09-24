@@ -2,18 +2,34 @@ import { useState, useEffect } from 'react'
 import { apiService } from '../utils/api'
 import { Store, Phone, Mail, CreditCard, Smartphone, Save, AlertCircle, CheckCircle } from 'lucide-react'
 
+interface RestaurantSettingsState {
+  name: string
+  description: string
+  phone: string
+  email: string
+  upiId: string
+  razorpayMerchantId: string
+}
+
+interface MessageState {
+  type: 'success' | 'error' | ''
+  text: string
+}
+
 export default function RestaurantSettings() {
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<RestaurantSettingsState>({
     name: '',
     description: '',
     phone: '',
     email: '',
     upiId: '',
-    razorpayMerchantId: '', // Changed from razorpayAccountId
+    razorpayMerchantId: '',
   })
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState({ type: '', text: '' })
 
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<MessageState>({ type: '', text: '' })
+
+  // Fetch settings on mount
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -24,36 +40,21 @@ export default function RestaurantSettings() {
           phone: data.phone || '',
           email: data.email || '',
           upiId: data.upi_id || '',
-          razorpayMerchantId: data.razorpay_merchant_id || '', // Updated field name
+          razorpayMerchantId: data.razorpay_merchant_id || '',
         })
-      } catch (error) {
+      } catch {
         setMessage({ type: 'error', text: 'Failed to load settings.' })
       }
     }
     fetchSettings()
   }, [])
 
-  interface RestaurantSettingsState {
-    name: string
-    description: string
-    phone: string
-    email: string
-    upiId: string
-    razorpayMerchantId: string // Updated field name
-  }
-
-  interface MessageState {
-    type: string
-    text: string
-  }
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setSettings((prev: RestaurantSettingsState) => ({ ...prev, [name]: value }))
+    setSettings(prev => ({ ...prev, [name]: value }))
   }
 
-  // Simple validation for required fields
-  function validate() {
+  const validate = (): string => {
     if (!settings.name.trim()) return 'Restaurant name is required.'
     if (!/^\d{10,13}$/.test(settings.phone)) return 'Enter a valid phone number (10-13 digits).'
     if (!/^.+@.+\..+$/.test(settings.email)) return 'Enter a valid email address.'
@@ -65,28 +66,31 @@ export default function RestaurantSettings() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setMessage({ type: '', text: '' })
+
     const err = validate()
     if (err) {
       setMessage({ type: 'error', text: err })
       return
     }
+
     setLoading(true)
     try {
       const payload = {
-        name: settings.name,
-        description: settings.description,
-        phone: settings.phone,
-        email: settings.email,
-        upi_id: settings.upiId,
-        razorpay_merchant_id: settings.razorpayMerchantId, // Updated field name
+        name: settings.name.trim(),
+        description: settings.description.trim(),
+        phone: settings.phone.trim(),
+        email: settings.email.trim(),
+        upi_id: settings.upiId.trim(),
+        razorpay_merchant_id: settings.razorpayMerchantId.trim(),
       }
       await apiService.updateRestaurantSettings(payload)
       setMessage({ type: 'success', text: 'Settings updated successfully!' })
     } catch {
       setMessage({ type: 'error', text: 'Failed to update settings. Please try again.' })
+    } finally {
+      setLoading(false)
+      setTimeout(() => setMessage({ type: '', text: '' }), 3500)
     }
-    setLoading(false)
-    setTimeout(() => setMessage({ type: '', text: '' }), 3500)
   }
 
   return (
@@ -104,17 +108,15 @@ export default function RestaurantSettings() {
         </div>
 
         <form onSubmit={handleSubmit} className="settings-form">
-          {/* Basic Information Section */}
+          {/* Basic Info */}
           <div className="form-section">
             <div className="section-header">
               <Store size={20} />
               <h3 className="section-title">Basic Information</h3>
             </div>
-
             <div className="input-group">
               <label className="input-label">
-                <Store size={16} />
-                Restaurant Name *
+                <Store size={16} /> Restaurant Name *
               </label>
               <input
                 type="text"
@@ -125,11 +127,8 @@ export default function RestaurantSettings() {
                 placeholder="Enter your restaurant name"
               />
             </div>
-
             <div className="input-group">
-              <label className="input-label">
-                Description (Optional)
-              </label>
+              <label className="input-label">Description (Optional)</label>
               <textarea
                 name="description"
                 value={settings.description}
@@ -141,46 +140,42 @@ export default function RestaurantSettings() {
             </div>
           </div>
 
-          {/* Contact Information Section */}
+          {/* Contact Info */}
           <div className="form-section">
             <div className="section-header">
               <Phone size={20} />
               <h3 className="section-title">Contact Information</h3>
             </div>
-
             <div className="input-group">
               <label className="input-label">
-                <Phone size={16} />
-                Contact Phone *
+                <Phone size={16} /> Contact Phone *
               </label>
               <input
                 type="text"
                 name="phone"
                 value={settings.phone}
                 onChange={handleChange}
-                className="form-input text-black"
+                className="form-input"
                 maxLength={13}
                 placeholder="Enter 10-13 digit number"
               />
             </div>
-
             <div className="input-group">
               <label className="input-label">
-                <Mail size={16} />
-                Contact Email *
+                <Mail size={16} /> Contact Email *
               </label>
               <input
                 type="email"
                 name="email"
                 value={settings.email}
                 onChange={handleChange}
-                className="form-input text-black"
+                className="form-input"
                 placeholder="restaurant@example.com"
               />
             </div>
           </div>
 
-          {/* Payment Details Section */}
+          {/* Payment */}
           <div className="form-section payment-section">
             <div className="section-header">
               <CreditCard size={20} />
@@ -203,7 +198,7 @@ export default function RestaurantSettings() {
                     name="upiId"
                     value={settings.upiId}
                     onChange={handleChange}
-                    className="form-input text-black"
+                    className="form-input"
                     placeholder="restaurant@upi"
                   />
                 </div>
@@ -225,7 +220,7 @@ export default function RestaurantSettings() {
                     name="razorpayMerchantId"
                     value={settings.razorpayMerchantId}
                     onChange={handleChange}
-                    className="form-input text-black"
+                    className="form-input"
                     placeholder="merchant_xxxxxxxxxxxxx"
                   />
                 </div>
@@ -233,24 +228,16 @@ export default function RestaurantSettings() {
             </div>
           </div>
 
-          {/* Message Display */}
+          {/* Message */}
           {message.text && (
             <div className={`message ${message.type === 'success' ? 'message-success' : 'message-error'}`}>
-              {message.type === 'success' ? (
-                <CheckCircle size={16} />
-              ) : (
-                <AlertCircle size={16} />
-              )}
+              {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
               <span>{message.text}</span>
             </div>
           )}
 
           {/* Submit Button */}
-          <button
-            type="submit"
-            className={`submit-btn ${loading ? 'loading' : ''}`}
-            disabled={loading}
-          >
+          <button type="submit" className={`submit-btn ${loading ? 'loading' : ''}`} disabled={loading}>
             <Save size={18} />
             <span>{loading ? 'Saving Settings...' : 'Save Settings'}</span>
             {loading && <div className="loading-spinner"></div>}

@@ -1,18 +1,18 @@
 # routes/review.py
-from flask import Blueprint
-
-review_bp = Blueprint('review', __name__, url_prefix='/api/review')
-# routes/review.py
 from flask import Blueprint, request, jsonify, current_app
 from extensions import db
 from models import Review
 from functools import wraps
 import jwt
-import datetime
+from datetime import datetime
 
 review_bp = Blueprint('review', __name__, url_prefix='/api/review')
 
+
 def auth_required(f):
+    """
+    Decorator to enforce JWT authentication for restaurant endpoints.
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get('Authorization')
@@ -21,17 +21,26 @@ def auth_required(f):
         try:
             token = token.split(' ')[1] if ' ' in token else token
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-            user_id = data.get('restaurant_id')
-            if not user_id:
+            restaurant_id = data.get('restaurant_id')
+            if not restaurant_id:
                 return jsonify({'error': 'Invalid token'}), 401
         except Exception:
             return jsonify({'error': 'Invalid token'}), 401
-        return f(user_id, *args, **kwargs)
+        return f(restaurant_id, *args, **kwargs)
     return decorated
+
 
 @review_bp.route('/', methods=['POST'])
 @auth_required
 def add_review(restaurant_id):
+    """
+    Add a review for the authenticated restaurant.
+    Payload:
+    {
+        "rating": int (1-5),
+        "comment": str (optional)
+    }
+    """
     data = request.get_json() or {}
     rating = data.get('rating')
     comment = data.get('comment', '')
@@ -43,15 +52,20 @@ def add_review(restaurant_id):
         restaurant_id=restaurant_id,
         rating=rating,
         comment=comment,
-        created_at=datetime.datetime.utcnow()
+        created_at=datetime.utcnow()
     )
     db.session.add(review)
     db.session.commit()
-    return jsonify({'message': 'Review added'}), 201
+
+    return jsonify({'message': 'Review added', 'review_id': review.id}), 201
+
 
 @review_bp.route('/', methods=['GET'])
 @auth_required
 def get_reviews(restaurant_id):
+    """
+    Get all reviews for the authenticated restaurant, most recent first.
+    """
     reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(Review.created_at.desc()).all()
     return jsonify([
         {
