@@ -10,7 +10,7 @@ class Config:
     # Use DATABASE_URL if set, otherwise fallback for local dev
     SQLALCHEMY_DATABASE_URI = os.getenv(
     "DATABASE_URL",
-    "postgresql://cafe_user:1947@localhost:5432/cafe_db"
+    'postgresql://neondb_owner:npg_c9dOPEAiW1kU@ep-curly-smoke-adtkujt6-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
 )
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
