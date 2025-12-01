@@ -1,6 +1,7 @@
 import os
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify, current_app
 from flask_cors import CORS
+from sqlalchemy import text
 from extensions import db, migrate
 from config import Config
 import razorpay
@@ -9,7 +10,17 @@ from models import Table
 def create_app():
     app = Flask(__name__, static_folder="dist", static_url_path="")
     app.config.from_object(Config)
-    CORS(app, supports_credentials=True, origins="*")
+
+    # Allowed origins: comma-separated env var FRONTEND_ORIGINS
+    # Example: "https://taptable.onrender.com,https://abcd-1234.ngrok.io"
+    raw_origins = os.environ.get("FRONTEND_ORIGINS", "https://taptable.onrender.com")
+    allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+
+    # Use CORS only for API routes (more secure); supports_credentials=True since frontend sends credentials
+    CORS(app,
+         resources={r"/api/*": {"origins": allowed_origins}},
+         supports_credentials=True)
+
     db.init_app(app)
     migrate.init_app(app, db)
 
@@ -49,7 +60,7 @@ def create_app():
         if path.startswith('api/'):
             return jsonify({'error': 'API route not found'}), 404
 
-        # Serve index.html for React Router
+        # Serve static file if exists else index.html
         file_path = os.path.join(app.static_folder, path)
         if os.path.exists(file_path):
             return send_from_directory(app.static_folder, path)
@@ -65,6 +76,17 @@ def create_app():
             'seats': t.seats,
             'qr_code': t.qr_code
         } for t in tables]), 200
+
+    # Simple DB connectivity test (use this to verify Render -> ngrok -> MySQL works)
+    @app.route('/api/_dbtest')
+    def db_test():
+        try:
+            with db.engine.connect() as conn:
+                res = conn.execute(text("SELECT 1")).scalar()
+            return jsonify({"db": bool(res), "result": int(res)}), 200
+        except Exception as e:
+            current_app.logger.exception("DB test failed")
+            return jsonify({"db": False, "error": str(e)}), 500
 
     return app
 
