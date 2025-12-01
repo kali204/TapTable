@@ -8,8 +8,28 @@ import razorpay
 from models import Table
 
 def create_app():
-    app = Flask(__name__, static_folder="dist", static_url_path="")
+    # use absolute path for static folder to avoid relative-path issues on Render
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    static_folder_path = os.path.join(base_dir, "dist")
+    app = Flask(__name__, static_folder=static_folder_path, static_url_path="")
+
     app.config.from_object(Config)
+
+    # Debug route: list files under dist (temporary, remove after debugging)
+    @app.route('/__static_list')
+    def static_list():
+        files = []
+        for root, dirs, filenames in os.walk(static_folder_path):
+            for f in filenames:
+                rel = os.path.relpath(os.path.join(root, f), static_folder_path)
+                files.append(rel)
+        return jsonify({"static_folder": static_folder_path, "files": sorted(files)}), 200
+
+    # Log 404s for easier debugging (temporary)
+    @app.errorhandler(404)
+    def log_404(e):
+        current_app.logger.warning("404 at path: %s", getattr(__import__('flask').request, 'path', 'unknown'))
+        return e, 404
 
     # Allowed origins: comma-separated env var FRONTEND_ORIGINS
     # Example: "https://taptable.onrender.com,https://abcd-1234.ngrok.io"
