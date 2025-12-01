@@ -84,7 +84,10 @@ export default function MenuManagement() {
     'Salads & Sides',
     'Pasta',
     'Drinks & Beverages',
-    'Desserts'
+    'Desserts',
+    'Breakfast',
+    'Snacks',
+    'Specials'
   ]
 
   // Dietary Badges Component

@@ -4,6 +4,7 @@ from extensions import db
 from models import MenuItem
 from functools import wraps
 import jwt
+from utils.dietary import detect_dietary_info
 
 menu_bp = Blueprint('menu', __name__, url_prefix='/api/menu')
 
@@ -42,6 +43,8 @@ def add_menu_item(restaurant_id):
     if not name or price is None:
         return jsonify({'error': 'Name and price are required'}), 400
 
+    diet = detect_dietary_info(name, data.get("description", ""))
+
     item = MenuItem(
         restaurant_id=restaurant_id,
         name=name,
@@ -50,11 +53,14 @@ def add_menu_item(restaurant_id):
         category=data.get('category'),
         image_url=data.get('image_url'),
         available=data.get('available', True),
-        is_vegetarian=data.get('is_vegetarian', False),
-        is_vegan=data.get('is_vegan', False),
-        is_gluten_free=data.get('is_gluten_free', False),
-        is_nut_free=data.get('is_nut_free', False),
+
+        # PASS the detected values to the database model
+        is_vegetarian=diet["is_vegetarian"],
+        is_vegan=diet["is_vegan"],
+        is_gluten_free=diet["is_gluten_free"],
+        is_nut_free=diet["is_nut_free"],
     )
+
     db.session.add(item)
     db.session.commit()
     return jsonify({'message': 'Menu item added', 'id': item.id}), 201

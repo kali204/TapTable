@@ -30,13 +30,41 @@ def auth_required(f):
     return decorated
 
 
-def generate_qr_code(restaurant_id, table_number):
+def _build_public_base():
     """
-    Generate a QR code URL for a table pointing to the customer menu.
+    Build the public base URL from incoming request headers.
+    Works with ngrok, Cloudflare Tunnel, reverse proxies, etc.
+
+    Priority:
+    1) X-Forwarded-Proto + X-Forwarded-Host (if proxy supplies them)
+    2) X-Forwarded-Proto + Host
+    3) request.scheme + Host
+    4) request.host_url as fallback
     """
-    base_url = "https://taptable.onrender.com/menu"
-    url_to_encode = f"{base_url}/{restaurant_id}/table_{table_number}"
-    encoded_data = urllib.parse.quote(url_to_encode)
+    forwarded_proto = request.headers.get("X-Forwarded-Proto")
+    forwarded_host = request.headers.get("X-Forwarded-Host") or request.headers.get("Host")
+
+    if forwarded_proto and forwarded_host:
+        scheme = forwarded_proto
+        host = forwarded_host
+    elif forwarded_host:
+        scheme = forwarded_proto or request.scheme
+        host = forwarded_host
+    else:
+        # As a final fallback, use Flask's host_url (contains scheme+host)
+        # host_url contains trailing slash, remove it.
+        return request.host_url.rstrip('/')
+
+    base = f"{scheme}://{host}"
+    return base.rstrip('/')
+
+
+def generate_qr_code_for_target(target_url: str) -> str:
+    """
+    Uses a QR generation service to create a QR image URL for the given target URL.
+    Encodes the target properly.
+    """
+    encoded_data = urllib.parse.quote(target_url, safe='')
     return f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={encoded_data}"
 
 
@@ -48,15 +76,23 @@ def add_table(restaurant_id):
     Payload: {"number": str/int, "seats": int}
     """
     data = request.get_json() or {}
-    number = str(data.get('number'))  # Store as string for consistency
-    seats = data.get('seats', 0)
+    number = str(data.get('number')).strip()  # Store as string for consistency
+    seats = int(data.get('seats', 0) or 0)
 
     if not number:
         return jsonify({'error': 'Table number is required'}), 400
     if Table.query.filter_by(restaurant_id=restaurant_id, number=number).first():
         return jsonify({'error': 'Table number already exists'}), 400
 
-    qr_code_url = generate_qr_code(restaurant_id, number)
+    # Build public base dynamically from request (works with ngrok)
+    base_url = _build_public_base()
+
+    # Construct the customer-facing path (adjust if your frontend uses a different route)
+    target = f"{base_url}/menu/{restaurant_id}/table_{number}"
+
+    # Generate QR image (using qrserver API). You can switch to other services or generate images server-side.
+    qr_code_url = generate_qr_code_for_target(target)
+
     table = Table(restaurant_id=restaurant_id, number=number, seats=seats, qr_code=qr_code_url)
     db.session.add(table)
     db.session.commit()
@@ -114,3 +150,30 @@ def get_tables_public(restaurant_id):
         'seats': t.seats,
         'qr_code': t.qr_code
     } for t in tables]), 200
+
+
+# --- New endpoint: regenerate QR for an existing table (useful when ngrok URL changed) ---
+@table_bp.route('/<int:table_id>/regenerate', methods=['POST'])
+@auth_required
+def regenerate_table_qr(restaurant_id, table_id):
+    """
+    Regenerate QR code for an existing table using current public host info.
+    """
+    table = Table.query.filter_by(id=table_id, restaurant_id=restaurant_id).first()
+    if not table:
+        return jsonify({'error': 'Table not found'}), 404
+
+    base_url = _build_public_base()
+    target = f"{base_url}/menu/{restaurant_id}/table_{table.number}"
+    table.qr_code = generate_qr_code_for_target(target)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'QR regenerated',
+        'table': {
+            'id': table.id,
+            'number': table.number,
+            'seats': table.seats,
+            'qr_code': table.qr_code
+        }
+    }), 200
