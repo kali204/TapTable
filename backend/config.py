@@ -1,15 +1,16 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # Load variables from .env file
+load_dotenv()
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
-    # Use DATABASE_URL if set, otherwise fallback for local dev
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL",
-        'mysql+pymysql://root:1947@localhost/restaurant'
+    # Clean DATABASE_URL (trim spaces/newlines)
+    RAW_DB_URL = os.getenv("DATABASE_URL", "").strip()
+
+    SQLALCHEMY_DATABASE_URI = (
+        RAW_DB_URL if RAW_DB_URL else 'mysql+pymysql://root:1947@localhost/restaurant'
     )
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
