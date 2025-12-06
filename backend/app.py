@@ -1,5 +1,5 @@
 import os
-from flask import Flask, send_from_directory, jsonify, current_app
+from flask import Flask, send_from_directory, jsonify, current_app, request
 from flask_cors import CORS
 from sqlalchemy import text
 from extensions import db, migrate
@@ -12,17 +12,15 @@ DIST_DIR = os.path.join(BASE_DIR, "dist")
 
 
 def create_app():
-    # IMPORTANT: disable Flask's own static route
+    # IMPORTANT: disable Flask's built-in static route
     app = Flask(__name__, static_folder=None)
 
     app.config.from_object(Config)
 
     # Allowed origins: comma-separated env var FRONTEND_ORIGINS
-    # Example: "https://taptable.onrender.com,https://abcd-1234.ngrok.io"
     raw_origins = os.environ.get("FRONTEND_ORIGINS", "https://taptable.onrender.com")
     allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
 
-    # Use CORS only for API routes; supports_credentials=True since frontend sends credentials
     CORS(
         app,
         resources={r"/api/*": {"origins": allowed_origins}},
@@ -32,7 +30,7 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Razorpay client setup
+    # Razorpay setup
     key_id = app.config.get("RAZORPAY_KEY_ID")
     key_secret = app.config.get("RAZORPAY_KEY_SECRET")
     app.razorpay_client = None
@@ -67,6 +65,26 @@ def create_app():
     ]:
         app.register_blueprint(bp)
 
+    # ---------- DEBUG: show what dist contains ----------
+    @app.route("/__debug_dist")
+    def debug_dist():
+        exists = os.path.exists(DIST_DIR)
+        index_exists = os.path.exists(os.path.join(DIST_DIR, "index.html"))
+        files = []
+        if exists:
+            for root, dirs, filenames in os.walk(DIST_DIR):
+                for f in filenames:
+                    rel = os.path.relpath(os.path.join(root, f), DIST_DIR)
+                    files.append(rel)
+        return jsonify(
+            {
+                "DIST_DIR": DIST_DIR,
+                "exists": exists,
+                "index_exists": index_exists,
+                "files_preview": files[:50],  # limit
+            }
+        )
+
     # ---------- SPA + static ----------
 
     @app.route("/")
@@ -86,12 +104,11 @@ def create_app():
         if path.startswith("api/"):
             return jsonify({"error": "API route not found"}), 404
 
-        # If real static file exists (JS, CSS, images, etc.), serve it
         file_path = os.path.join(DIST_DIR, path)
         if os.path.exists(file_path):
             return send_from_directory(DIST_DIR, path)
 
-        # Otherwise let React Router handle this route
+        # let React Router handle unknown routes
         return send_from_directory(DIST_DIR, "index.html")
 
     # Example API route
