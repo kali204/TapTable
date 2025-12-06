@@ -7,46 +7,34 @@ from config import Config
 import razorpay
 from models import Table
 
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DIST_DIR = os.path.join(BASE_DIR, "dist")
+
+
 def create_app():
-    # use absolute path for static folder to avoid relative-path issues on Render
-    base_dir = os.path.abspath(os.path.dirname(__file__))
-    static_folder_path = os.path.join(base_dir, "dist")
-    app = Flask(__name__, static_folder=static_folder_path, static_url_path="")
+    # IMPORTANT: disable Flask's own static route
+    app = Flask(__name__, static_folder=None)
 
     app.config.from_object(Config)
-
-    # Debug route: list files under dist (temporary, remove after debugging)
-    @app.route('/__static_list')
-    def static_list():
-        files = []
-        for root, dirs, filenames in os.walk(static_folder_path):
-            for f in filenames:
-                rel = os.path.relpath(os.path.join(root, f), static_folder_path)
-                files.append(rel)
-        return jsonify({"static_folder": static_folder_path, "files": sorted(files)}), 200
-
-    # Log 404s for easier debugging (temporary)
-    @app.errorhandler(404)
-    def log_404(e):
-        current_app.logger.warning("404 at path: %s", getattr(__import__('flask').request, 'path', 'unknown'))
-        return e, 404
 
     # Allowed origins: comma-separated env var FRONTEND_ORIGINS
     # Example: "https://taptable.onrender.com,https://abcd-1234.ngrok.io"
     raw_origins = os.environ.get("FRONTEND_ORIGINS", "https://taptable.onrender.com")
     allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
 
-    # Use CORS only for API routes (more secure); supports_credentials=True since frontend sends credentials
-    CORS(app,
-         resources={r"/api/*": {"origins": allowed_origins}},
-         supports_credentials=True)
+    # Use CORS only for API routes; supports_credentials=True since frontend sends credentials
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": allowed_origins}},
+        supports_credentials=True,
+    )
 
     db.init_app(app)
     migrate.init_app(app, db)
 
     # Razorpay client setup
-    key_id = app.config.get('RAZORPAY_KEY_ID')
-    key_secret = app.config.get('RAZORPAY_KEY_SECRET')
+    key_id = app.config.get("RAZORPAY_KEY_ID")
+    key_secret = app.config.get("RAZORPAY_KEY_SECRET")
     app.razorpay_client = None
     if key_id and key_secret:
         app.razorpay_client = razorpay.Client(auth=(key_id, key_secret))
@@ -64,41 +52,69 @@ def create_app():
     from routes.customer_menu import customer_menu_bp
     from routes.customer_order import customer_order_bp
 
-    for bp in [customer_order_bp, customer_menu_bp, payment_bp, auth_bp, menu_bp, table_bp,
-               order_bp, review_bp, analytics_bp, restaurant_bp, settings_bp]:
+    for bp in [
+        customer_order_bp,
+        customer_menu_bp,
+        payment_bp,
+        auth_bp,
+        menu_bp,
+        table_bp,
+        order_bp,
+        review_bp,
+        analytics_bp,
+        restaurant_bp,
+        settings_bp,
+    ]:
         app.register_blueprint(bp)
 
-    # Serve SPA root
-    @app.route('/')
+    # ---------- SPA + static ----------
+
+    @app.route("/")
     def index():
-        return send_from_directory(app.static_folder, "index.html")
+        return send_from_directory(DIST_DIR, "index.html")
 
-    # Catch-all for SPA routes (admin, customer pages, etc.)
-    @app.route('/<path:path>')
+    @app.route("/favicon.ico")
+    def favicon():
+        path = os.path.join(DIST_DIR, "favicon.ico")
+        if os.path.exists(path):
+            return send_from_directory(DIST_DIR, "favicon.ico")
+        return "", 204
+
+    @app.route("/<path:path>")
     def catch_all(path):
-        # API routes should not be caught
-        if path.startswith('api/'):
-            return jsonify({'error': 'API route not found'}), 404
+        # API routes should not be caught by SPA
+        if path.startswith("api/"):
+            return jsonify({"error": "API route not found"}), 404
 
-        # Serve static file if exists else index.html
-        file_path = os.path.join(app.static_folder, path)
+        # If real static file exists (JS, CSS, images, etc.), serve it
+        file_path = os.path.join(DIST_DIR, path)
         if os.path.exists(file_path):
-            return send_from_directory(app.static_folder, path)
-        return send_from_directory(app.static_folder, "index.html")
+            return send_from_directory(DIST_DIR, path)
+
+        # Otherwise let React Router handle this route
+        return send_from_directory(DIST_DIR, "index.html")
 
     # Example API route
-    @app.route('/api/restaurants/<int:restaurant_id>/tables')
+    @app.route("/api/restaurants/<int:restaurant_id>/tables")
     def get_tables_restaurant(restaurant_id):
         tables = Table.query.filter_by(restaurant_id=restaurant_id).all()
-        return jsonify([{
-            'id': t.id,
-            'number': t.number,
-            'seats': t.seats,
-            'qr_code': t.qr_code
-        } for t in tables]), 200
+        return (
+            jsonify(
+                [
+                    {
+                        "id": t.id,
+                        "number": t.number,
+                        "seats": t.seats,
+                        "qr_code": t.qr_code,
+                    }
+                    for t in tables
+                ]
+            ),
+            200,
+        )
 
-    # Simple DB connectivity test (use this to verify Render -> ngrok -> MySQL works)
-    @app.route('/api/_dbtest')
+    # Simple DB connectivity test
+    @app.route("/api/_dbtest")
     def db_test():
         try:
             with db.engine.connect() as conn:
