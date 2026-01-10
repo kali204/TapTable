@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { apiService } from '../utils/api'
+import { apiService, AuthResponse } from '../utils/api'
 
 interface User {
-  id: string
+  id: number
   name: string
   email: string
-  restaurantId: string
+  restaurantId: number
 }
 
 interface AuthContextType {
@@ -22,56 +22,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Restore token and user info from storage on mount
   useEffect(() => {
     const token = localStorage.getItem('token')
     const userRaw = localStorage.getItem('user')
+
     if (token && userRaw) {
-      apiService.setToken(token)      // Use latest token for API calls
-      try {
-        const parsed = JSON.parse(userRaw)
-        setUser(parsed)
-      } catch {
-        setUser(null)
-      }
+      apiService.setToken(token)
+      setUser(JSON.parse(userRaw))
     }
     setLoading(false)
   }, [])
 
-  // Actual login - stores token and user to localStorage
+  const mapAuthResponseToUser = (res: AuthResponse): User => ({
+    id: res.restaurant.id,
+    name: res.restaurant.name,
+    email: res.restaurant.email,
+    restaurantId: res.restaurant.id,
+  })
+
   const login = async (email: string, password: string) => {
-    const response = await apiService.login(email, password)
-    // expected: { token, restaurant: { ... } }
-    if (!response.token || !response.restaurant) throw new Error('Invalid credentials')
-    const userData: User = {
-      id: response.restaurant.id.toString(),
-      name: response.restaurant.name,
-      email: response.restaurant.email,
-      restaurantId: response.restaurant.id.toString()
-    }
+    const res: AuthResponse = await apiService.login(email, password)
+    const userData = mapAuthResponseToUser(res)
+
     setUser(userData)
-    localStorage.setItem('token', response.token)
+    localStorage.setItem('token', res.token)
     localStorage.setItem('user', JSON.stringify(userData))
-    apiService.setToken(response.token)
   }
 
-  // Register also persists login
   const register = async (name: string, email: string, password: string) => {
-    const response = await apiService.register(name, email, password)
-    if (!response.token || !response.restaurant) throw new Error('Registration failed')
-    const userData: User = {
-      id: response.restaurant.id.toString(),
-      name: response.restaurant.name,
-      email: response.restaurant.email,
-      restaurantId: response.restaurant.id.toString()
-    }
+    const res: AuthResponse = await apiService.register(name, email, password)
+    const userData = mapAuthResponseToUser(res)
+
     setUser(userData)
-    localStorage.setItem('token', response.token)
+    localStorage.setItem('token', res.token)
     localStorage.setItem('user', JSON.stringify(userData))
-    apiService.setToken(response.token)
   }
 
-  // Log out: clear everything
   const logout = () => {
     setUser(null)
     localStorage.removeItem('token')
@@ -88,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
