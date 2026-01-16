@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { apiService } from '../utils/api'
 import { Store, Phone, Mail, CreditCard, Smartphone, Save, AlertCircle, CheckCircle } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+
+
 
 interface RestaurantSettingsState {
   name: string
@@ -17,6 +20,7 @@ interface MessageState {
 }
 
 export default function RestaurantSettings() {
+  const { user } = useAuth()
   const [settings, setSettings] = useState<RestaurantSettingsState>({
     name: '',
     description: '',
@@ -31,23 +35,28 @@ export default function RestaurantSettings() {
 
   // Fetch settings on mount
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const data = await apiService.getRestaurantSettings()
-        setSettings({
-          name: data.name || '',
-          description: data.description || '',
-          phone: data.phone || '',
-          email: data.email || '',
-          upiId: data.upi_id || '',
-          razorpayMerchantId: data.razorpay_merchant_id || '',
-        })
-      } catch {
-        setMessage({ type: 'error', text: 'Failed to load settings.' })
-      }
+  const fetchSettings = async () => {
+    try {
+      if (!user?.restaurantId) return
+
+      const data = await apiService.getRestaurantSettings(user.restaurantId)
+
+      setSettings({
+        name: data.name || '',
+        description: data.description || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        upiId: data.upi_id || '',
+        razorpayMerchantId: data.razorpay_merchant_id || '',
+      })
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to load settings.' })
     }
-    fetchSettings()
-  }, [])
+  }
+
+  fetchSettings()
+}, [user])
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -83,7 +92,12 @@ export default function RestaurantSettings() {
         upi_id: settings.upiId.trim(),
         razorpay_merchant_id: settings.razorpayMerchantId.trim(),
       }
-      await apiService.updateRestaurantSettings(payload)
+      if (!user?.restaurantId) {
+        setMessage({ type: 'error', text: 'User not authenticated.' })
+        setLoading(false)
+        return
+      }
+      await apiService.updateRestaurantSettings(user.restaurantId, payload)
       setMessage({ type: 'success', text: 'Settings updated successfully!' })
     } catch {
       setMessage({ type: 'error', text: 'Failed to update settings. Please try again.' })

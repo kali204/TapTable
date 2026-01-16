@@ -43,7 +43,7 @@ export default function MenuManagement() {
   const loadMenuItems = async () => {
     try {
       setError(null)
-      const items = await apiService.getMenu(parseInt(user!.restaurantId))
+      const items = await apiService.getMenu((user!.restaurantId))
       setMenuItems(items.map((item: any) => ({
         ...item,
         id: item.id.toString(),
@@ -65,7 +65,7 @@ export default function MenuManagement() {
   const handleReclassifyMenu = async () => {
     setIsReclassifying(true)
     try {
-      await apiService.reclassifyMenu(parseInt(user!.restaurantId))
+      await apiService.reclassifyMenu((user!.restaurantId))
       await loadMenuItems()
       alert('Menu items re-classified successfully!')
     } catch (error) {
@@ -75,6 +75,7 @@ export default function MenuManagement() {
       setIsReclassifying(false)
     }
   }
+  
 
   const categories = [
     'Appetizers',

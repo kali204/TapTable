@@ -22,6 +22,7 @@ export default function OrderManagement() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | Order['status']>('all')
+  
 
   useEffect(() => {
     if (user) {
@@ -32,23 +33,30 @@ export default function OrderManagement() {
   }, [user])
 
   const loadOrders = async () => {
-    setIsRefreshing(true)
-    try {
-      const ordersData = await apiService.getOrders()
-      setOrders(ordersData.map((order: any) => ({
+  if (!user?.restaurantId) return
+
+  setIsRefreshing(true)
+  try {
+    const ordersData = await apiService.getOrders(user.restaurantId)
+
+    setOrders(
+      ordersData.map((order: any) => ({
         ...order,
         id: order.id.toString(),
-        timestamp: order.timestamp
-      })))
-      setError(null)
-    } catch (error) {
-      console.error('Failed to load orders:', error)
-      setError('Unable to fetch live orders. Please try again later.')
-      setOrders([])
-    } finally {
-      setIsRefreshing(false)
-    }
+        timestamp: order.timestamp,
+      }))
+    )
+
+    setError(null)
+  } catch (error) {
+    console.error('Failed to load orders:', error)
+    setError('Unable to fetch live orders. Please try again later.')
+    setOrders([])
+  } finally {
+    setIsRefreshing(false)
   }
+}
+
 
   const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     setStatusUpdating(s => ({ ...s, [orderId]: true }))

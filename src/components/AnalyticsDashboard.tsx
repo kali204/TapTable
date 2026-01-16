@@ -32,25 +32,30 @@ export default function AnalyticsDashboard() {
   const [customRange, setCustomRange] = useState<{start: string; end: string}>({ start: '', end: '' })
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        if (!user) return
-        const params: any = { timeRange }
-        if (timeRange === 'custom') {
-          params.startDate = customRange.start
-          params.endDate = customRange.end
-        }
-        const res = await apiService.getAnalytics(parseInt(user.restaurantId))
-        setData(res)
-      } catch (error) {
-        console.error('Failed to fetch analytics:', error)
-        setData(null)
-      } finally {
-        setLoading(false)
+  const fetchAnalytics = async () => {
+    try {
+      if (!user?.restaurantId) return
+
+      const params: any = { timeRange }
+
+      if (timeRange === 'custom') {
+        params.startDate = customRange.start
+        params.endDate = customRange.end
       }
+
+      const res = await apiService.getAnalytics(user.restaurantId)
+      setData(res)
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error)
+      setData(null)
+    } finally {
+      setLoading(false)
     }
-    fetchAnalytics()
-  }, [user, timeRange, customRange])
+  }
+
+  fetchAnalytics()
+}, [user, timeRange, customRange])
+
 
   if (loading) {
     return (

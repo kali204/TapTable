@@ -68,21 +68,21 @@ export default function CustomerDetailsModal({
     const tableNumber = tableId?.replace('table_', '') || '1';
 
     const orderData = {
-      customerName: customerInfo.name.trim(),
-      customerPhone: customerInfo.phone.trim(),
-      amount: total,
-      restaurant_id: parseInt(restaurantId),
-      table_number: parseInt(tableNumber),
-      payment_method: "razorpay",  // <-- Add the required payment method here
-      items: cartItems.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity
-      })),
-    };
+  customerName: customerInfo.name.trim(),
+  customerPhone: customerInfo.phone.trim(),
+  amount: total,
+  restaurant_id: parseInt(restaurantId),
+  table_number: parseInt(tableNumber),
+  payment_method: "razorpay" as "razorpay",
+  items: cartItems.map(item => ({
+    id: Number(item.id),
+    name: String(item.name),
+    price: Number(item.price),
+    quantity: Number(item.quantity),
+  })),
+};
 
-    const response = await apiService.createOrder(orderData);
+    const response = await apiService.createOrder(orderData)
 
     const paymentData = {
       paymentMode: response.payment_mode as 'upi' | 'razorpay',

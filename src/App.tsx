@@ -1,10 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import LandingPage from './pages/LandingPage'
-import AdminLogin from './pages/AdminLogin'
-import AdminDashboard from './pages/AdminDashboard'
+import LandingPage from './pages/LandingPage.tsx'
+import AdminLogin from './pages/AdminLogin.tsx'
+import AdminDashboard from './pages/AdminDashboard.tsx'
 import CustomerMenu from './customer/CustomerMenu.tsx'
-import { AuthProvider } from './contexts/AuthContext'
-import ProtectedRoute from './components/ProctectedRoute' 
+import { AuthProvider } from './contexts/AuthContext.tsx'
+import ProtectedRoute from './components/ProctectedRoute.tsx' 
 import ScrollToTop from './components/ScrolltoTop.tsx'
 function App() {
   return (
